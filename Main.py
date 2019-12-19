@@ -92,11 +92,28 @@ class FlashingThread(threading.Thread):
             print("Command: esptool.py %s\n" % " ".join(command))
 
             esptool.main(command)
+            command = []
+
+            if not self._config.port.startswith(__auto_select__):
+                command.append("--port")
+                command.append(self._config.port)
+            
+            spiffs_path = self._config.firmware_path.replace("ino.bin", "spiffs.bin")
+            command.extend(["--baud", str(self._config.baud),
+                            "write_flash",
+                            "--flash_mode", self._config.mode,
+                            "0x300000", spiffs_path])
+
+            if self._config.erase_before_flash:
+                command.append("--erase-all")
+
+            print("Command: esptool.py %s\n" % " ".join(command))
+
+            esptool.main(command)
 
             # The last line printed by esptool is "Staying in bootloader." -> some indication that the process is
             # done is needed
-            print("\nFirmware successfully flashed. Unplug/replug or reset device \nto switch back to normal boot "
-                  "mode.")
+            print("\nFirmware successfully flashed.")
         except SerialException as e:
             self._parent.report_error(e.strerror)
             raise e
@@ -197,6 +214,7 @@ class NodeMcuFlasher(wx.Frame):
 
         def on_pick_file(event):
             self._config.firmware_path = event.GetPath().replace("'", "")
+            self._config.firmware_path = self._config.firmware_path.replace("spiffs.bin", "ino.bin")
 
         panel = wx.Panel(self)
 
